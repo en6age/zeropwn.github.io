@@ -255,11 +255,6 @@ origin://?" /StartClientMinimized /noUpdate -Origin_MultipleInstances "
 ```
 
 
-# Bonus Bypass
-Seeing as Electronic Arts' does not take their security seriously, I've decided to release a bypass for the first exploit as well. Enjoy. I've tried to get in contact with them multiple times with no success. Worst VDP ever, don't waste your time. They'll promise to pay you in games and then refuse to deliver even that. O WELL
-
-[https://gist.github.com/zeropwn/c22892a2382de8a624430859121f8534](https://gist.github.com/zeropwn/c22892a2382de8a624430859121f8534)
-
 # References
 * [https://medium.com/0xcc/electrons-bug-shellexecute-to-blame-cacb433d0d62](https://medium.com/0xcc/electrons-bug-shellexecute-to-blame-cacb433d0d62)
 * [https://www.thezdi.com/blog/2019/4/3/loading-up-a-pair-of-qt-bugs-detailing-cve-2019-1636-and-cve-2019-6739](https://www.thezdi.com/blog/2019/4/3/loading-up-a-pair-of-qt-bugs-detailing-cve-2019-1636-and-cve-2019-6739)
