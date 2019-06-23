@@ -6,9 +6,9 @@ layout: default
 
 <img class="profile-picture" src="{{site.baseurl}}/{{site.profile-picture}}">
 
-My name is Dominik Penner. I'm a 20 year old infosec enthusiast and security researcher. I specialize in web-app security and operating systems. I have helped a wide variety of organizations secure their systems over the course of approximately 7 years. Some of these include: Internet Service Providers & Electronic Medical Software vendors. My main focus is to report critical vulnerabilities in software/hardware before malicious adversaries have the opportunity to exploit them.
+My name is Dominik Penner. I'm a 21 year old infosec enthusiast and security researcher. I specialize in web-app security and operating systems. I have helped a wide variety of organizations secure their systems over the course of approximately 7 years. Some of these include: Internet Service Providers & Electronic Medical Software vendors. My main focus is to report critical vulnerabilities in software/hardware before malicious adversaries have the opportunity to exploit them.
 
-## Vulnerability Reports
+## Vulnerability Reports / CVEs
 
 * [EA Origin Argument Injection RCE (CVE-2019-12828)](https://zeropwn.github.io/2019-05-22-fun-with-uri-handlers/)
 * [EA Origin Template Injection RCE (CVE-2019-11354)](https://zeropwn.github.io/2019-05-13-xss-to-rce/)
@@ -23,6 +23,7 @@ My name is Dominik Penner. I'm a 20 year old infosec enthusiast and security res
 Python API wrapper for the tools hosted on spyse.com.
 
 "Spyse is a developer of complete DAAS (Data-As-A-Service) solutions for Internet security professionals, corporate and remote system administrators, SSL / TLS encryption certificate providers, data centers and business analysts. All Spyse online solutions are represented by thematic services that have a single platform for collecting, processing and aggregating information." - spyse.com
+
 
 ## Recognitions
 
