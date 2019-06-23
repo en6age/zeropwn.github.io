@@ -10,7 +10,8 @@ My name is Dominik Penner. I'm a 20 year old infosec enthusiast and security res
 
 ## Vulnerability Reports
 
-* [EA Origin Client Remote Code Execution (Proof of Concept)](https://blog.underdogsecurity.com/rce_in_origin_client/)
+* [EA Origin Argument Injection RCE (CVE-2019-12828)](https://zeropwn.github.io/2019-05-22-fun-with-uri-handlers/)
+* [EA Origin Template Injection RCE (CVE-2019-11354)](https://zeropwn.github.io/2019-05-13-xss-to-rce/)
 * [SOLEO IP Relay Vulnerability Report](https://github.com/zeropwn/vulnerability-reports-and-pocs/blob/master/SOLEO%20IPRelay%20Vulnerability%20Report.pdf)
 * [OpenEMR v5.0.1.3 Vulnerability Report](https://github.com/zeropwn/vulnerability-reports-and-pocs/blob/master/OpenEMR%20-%20Vulnerability%20Report.pdf)
 
